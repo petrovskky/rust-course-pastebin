@@ -1,9 +1,9 @@
 use std::{collections::HashMap, io::Write, path::Path};
 
 use rand::distr::SampleString;
-use serde::{Deserialize, Serialize, Serializer, Deserializer};
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use sha2::Digest;
-use hex;
 
 type Username = String;
 
@@ -12,30 +12,17 @@ pub struct State {
     users: HashMap<Username, User>,
 }
 
+#[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
     pub username: Username,
     password_salt: String,
-    #[serde(serialize_with = "serialize_hex")]
-    #[serde(deserialize_with = "deserialize_hex")]
+    #[serde_as(as = "serde_with::hex::Hex")]
     password_hash: Vec<u8>,
     pub paste_ids: Vec<String>,
 }
 
-fn serialize_hex<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    serializer.serialize_str(&hex::encode(bytes))
-}
 
-fn deserialize_hex<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    hex::decode(&s).map_err(serde::de::Error::custom)
-}
 
 impl State {
     pub fn load(path: &Path) -> anyhow::Result<Self> {
